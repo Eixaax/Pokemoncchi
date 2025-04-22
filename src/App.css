@@ -1571,11 +1571,13 @@
   height: 70%;
   position: absolute;
   z-index: 2;
+  display: flex;
+  align-items: center;
 }
 
 .hud{
   height: 80px;
-  width: 250px;
+  width: 200px;
   background-color: rgb(223, 222, 222);
   position: absolute;
   top: 1em;
@@ -1591,10 +1593,12 @@
 .hud.you{
   right: 1em;
   left: inherit;
+  
 }
 
 .hud strong {
-  font-size: clamp(1.5rem, 2.5vw, 2.5rem);
+  font-size: clamp(1rem, 2.5vw, 1.2rem);
+  text-transform: capitalize;
 }
 
 .hud .strong.you{
@@ -1610,7 +1614,6 @@
   border-radius: 2px solid grey;
   align-items: end;
   flex-direction: column;
-
 }
 
 
@@ -1624,7 +1627,98 @@
   border-radius: 5px;
 }
 
-.health-bar p, .health-bar.you p{
+.battle-stats{
+  position: absolute;
+  height: 100px;
+  width: 100%;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+}
+
+.vs-stats{
+  height: 100%;
+  width: 40%;
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: space-between;
+  position: relative;
+  
+}
+
+.results{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%,-50%);
+}
+
+.results p {
+  font-size: 18px;
+  margin-top: 10px;
+}
+
+.final-result {
+  margin-top: 20px;
+  font-size: 24px;
+  font-weight: bold;
+  color: gold;
+  animation: popIn 0.5s ease;
+}
+
+@keyframes popIn {
+  0% { transform: scale(0.8); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+
+.vs-img{
+  position: absolute;
+  height: 100%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  mix-blend-mode: multiply;
+  display: flex;
+  align-items: center;
+}
+
+.vs-img img{
+  height: 100%;
+  width: 100%;
+  mix-blend-mode: multiply;
+  object-fit: contain;
+}
+
+.the-stats{
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: end;
+  align-items: center;
+  height: 50%;
+  padding-right: 1em;
+  gap: 1em;
+  width: auto;
+  animation: popIn 0.5s ease;
+}
+
+
+.the-stats.you{
+  justify-content: start;
+  padding-left: 1em;
+  flex-direction: row;
+  padding-right: 0;
+}
+
+
+.health-bar p, .health-bar.you p, .the-stats p{
   margin: 0;
 }
 
@@ -1637,16 +1731,22 @@
 }
 
 .bar{
-  width: 33%;
+  width: 100%;
   background-color: var(--color-light);
   height: 10px;
   border-radius: 5px;
+}
+
+.bar.you{
+  width: 100%;
 }
 
 .the-pokemon img{
   height: 100%;
   object-fit: contain;
 }
+
+
 
 
 .teamName {
@@ -1842,6 +1942,21 @@
 
   .arena{
     width: 100%;
+  }
+
+  .battle-cont h1{
+    font-size: 2.5rem;
+  }
+
+  .battle-cont .item{
+    height: 400px;
+  }
+
+  .vs-stats{
+    flex-direction: row;
+    width: 60%;
+    align-items: center;
+
   }
 }
 
