@@ -12,7 +12,7 @@ import sfx from "./assets/sfx.mp3";
 import error from "./assets/error.mp3";
 import captured from "./assets/captured.mp3";
 import axios from "axios"
-import { FaEye, FaBookmark, FaPlus, FaTrash } from 'react-icons/fa';
+import { FaArrowLeft, FaArrowRight, FaEye, FaBookmark, FaPlus, FaTrash } from 'react-icons/fa';
 
 function App() {
   const [activePage, setActivePage] = useState("landing");
@@ -25,10 +25,19 @@ function App() {
   const [selectedType, setSelectedType] = useState(null);
   const [selectedPokemon, setSelectedPokemon] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [showOverlay, setShowOverlay] = useState(false);
   const [activeTab, setActiveTab] = useState("about");
   const [team, setTeam] = useState([]);
+  const [teams, setTeams] = useState([]);
   const [bgMusic, setBgMusic] = useState(null);
   const [soundType, setSoundType] = useState(null);
+  const [teamName, setTeamName] = useState("");
+  const [activeTeam, setActiveTeam] = useState("teams");
+  const [activeBattlePage, setActiveBattlePage] = useState("choices");
+  const [chosenPokemon, setChosenPokemon] = useState([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+
 
   const sounds = {
     sfx,
@@ -46,7 +55,6 @@ function App() {
   }
 
   useEffect(() => {
-    console.log(pokemonList)
     if (soundType) {
       playSound(soundType);
   
@@ -112,7 +120,6 @@ function App() {
   };
 
   const handleInputChange = async (value) => {
-    setSoundType("sfx")
     setSearchTerm(value);
     setSelectedType(null); 
     
@@ -282,33 +289,47 @@ function App() {
   };
   
   const addToTeam = async (id) => {
-    
     try {
-      const teamRes = await fetch('http://localhost:3001/team');
-      const currentTeam = await teamRes.json();
+      // Fetch all teams
+      const teamRes = await fetch('http://https://json-server-yxws.onrender.com/teams');
+      const allTeams = await teamRes.json();
   
-      if (currentTeam.length >= 6) {
-        setSoundType("error")
+      // Find the selected team
+      const selectedTeam = allTeams.find(team => team.selected === true);
+      if (!selectedTeam) {
+        alert("No team is selected.");
+        setSoundType("error");
         return;
       }
   
-      // Fetch full Pokémon data from the API
+      if (selectedTeam.pokemon.length >= 6) {
+        alert("Selected team is already full!");
+        setSoundType("error");
+        return;
+      }
+  
+      // Fetch Pokémon data
       const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
       const data = await res.json();
   
-      // Check if the Pokémon is already in the team
-      const alreadyInTeam = currentTeam.some(poke => poke.id === data.id);
+      // Check for duplicate
+      const alreadyInTeam = selectedTeam.pokemon.some(poke => poke.id === data.id);
       if (alreadyInTeam) {
         alert(`${data.name} is already in your team!`);
-        setSoundType("error")
+        setSoundType("error");
         return;
       }
   
-      // Prepare the simplified data to store
       const newPokemon = {
         id: data.id,
         name: data.name,
         image: data.sprites.other['official-artwork'].front_default,
+        front:
+          data.sprites.versions['generation-v']?.['black-white']?.animated?.front_default ||
+          data.sprites.front_default,
+        back:
+          data.sprites.versions['generation-v']?.['black-white']?.animated?.back_default ||
+          data.sprites.back_default,
         type: data.types.map(t => t.type.name),
         stats: data.stats.map(stat => ({
           name: stat.stat.name,
@@ -316,55 +337,316 @@ function App() {
         }))
       };
   
-      // Save to JSON server
-      await fetch('http://localhost:3001/team', {
-        method: 'POST',
+      const updatedTeam = {
+        ...selectedTeam,
+        pokemon: [...selectedTeam.pokemon, newPokemon]
+      };
+  
+      await fetch(`http://https://json-server-yxws.onrender.com/teams/${selectedTeam.id}`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(newPokemon)
+        body: JSON.stringify(updatedTeam)
       });
-      setSoundType("captured")
-      console.log(`${data.name} added to your team!`);
+  
+      setSoundType("captured");
+      console.log(`${data.name} added to ${selectedTeam.name}!`);
     } catch (err) {
       console.error("Failed to add to team:", err);
-      setSoundType("error")
+      setSoundType("error");
     }
   };
-
-  const fetchTeam = async () => {
-    try {
-      const res = await fetch('http://localhost:3001/team');
-      const teamData = await res.json();
-      setTeam(teamData);
-    } catch (error) {
-      console.error("Failed to fetch team:", error);
-    }
-  };
-
-  const removeFromTeam = async (id) => {
-    try {
-      // Delete from json-server
-      await axios.delete(`http://localhost:3001/team/${id}`);
   
-      // Remove from local state
-      setSoundType("sfx")
-      setTeam((prevTeam) => prevTeam.filter((member) => member && member.id !== id));
+  
+
+  // const fetchTeam = async () => {
+  //   try {
+  //     const res = await fetch('http://localhost:3001/team');
+  //     const teamData = await res.json();
+  //     setTeam(teamData);
+  //   } catch (error) {
+  //     console.error("Failed to fetch team:", error);
+  //   }
+  // };
+
+  const fetchTeams = async () => {
+
+    try {
+      const response = await fetch("http://https://json-server-yxws.onrender.com/teams");
+      if (!response.ok) {
+        throw new Error("Failed to fetch teams");
+      }
+      const data = await response.json();
+      console.log("Fetched Teams:", data);
+      setTeams(data);
     } catch (error) {
-      setSoundType("error")
+      console.error("Error fetching teams:", error);
+    }
+  };
+
+  const removeFromTeam = async (teamId, pokemonId) => {
+    try {
+      // Get the team first (optional, or use from local state)
+      const teamRes = await axios.get(`http://https://json-server-yxws.onrender.com/teams/${teamId}`);
+      const team = teamRes.data;
+  
+      // Filter out the Pokémon to remove
+      const updatedPokemonList = team.pokemon.filter(p => p.id !== pokemonId);
+  
+      // Update the team with the new Pokémon list
+      await axios.patch(`http://localhost:3001/teams/${teamId}`, {
+        pokemon: updatedPokemonList
+      });
+  
+      setSoundType("sfx");
+  
+      // Update your local state
+      setTeam(prev =>
+        prev.id === teamId ? { ...prev, pokemon: updatedPokemonList } : prev
+      );
+
+    } catch (error) {
+      setSoundType("error");
+      console.error("Error removing Pokémon from team:", error);
+    }
+  };
+  
+
+  const deleteTeam = async (id) => {
+    try {
+      await axios.delete(`http://https://json-server-yxws.onrender.com/teams/${id}`);
+  
+      setSoundType("sfx");
+  
+      setTeams((prevTeams) => prevTeams.filter((team) => team.id !== id));
+    } catch (error) {
+      setSoundType("error");
       console.error("Error removing Pokémon from team:", error);
     }
   };
 
+  const confirm = () => {
+    console.log("Team Name:", teamName);
+  
+    const newTeam = {
+      name: teamName,
+      pokemon: [],
+      selected: true 
+    };
+  
+    const deselectPromises = teams.map(team =>
+      fetch(`http://https://json-server-yxws.onrender.com/teams/${team.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ selected: false })
+      })
+    );
+  
+    Promise.all(deselectPromises)
+      .then(() =>
+        fetch("http://https://json-server-yxws.onrender.com/teams", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(newTeam)
+        })
+      )
+      .then(res => res.json())
+      .then(data => {
+        console.log("Team added:", data);
+        setTeams(prev => {
+          const updated = prev.map(t => ({ ...t, selected: false }));
+          return [...updated, data];
+        });
+        setShowOverlay(false);
+      })
+      .catch(err => console.error("Error adding team:", err));
+  };
+  
+  
+
+  const selectTeam = async (id) => {
+    try {
+      // Deselect all teams in the backend
+      const deselectPromises = teams
+        .filter(team => team.selected || team.id === id)
+        .map(team =>
+          axios.patch(`http://https://json-server-yxws.onrender.com/teams/${team.id}`, {
+            selected: team.id === id,
+          })
+        );
+  
+      await Promise.all(deselectPromises);
+  
+      // Update local state
+      const updatedTeams = teams.map(team => ({
+        ...team,
+        selected: team.id === id,
+      }));
+  
+      setTeams(updatedTeams);
+      setSoundType("sfx");
+    } catch (error) {
+      console.error("Error selecting team:", error);
+      setSoundType("error");
+    }
+  };
+  
+
+  const viewTeam = async (id) => {
+    setActiveTeam("pokemons")
+
+    try {
+      // Fetch team data by ID
+      const response = await axios.get(`http://https://json-server-yxws.onrender.com/teams/${id}`);
+      
+      // Extract the Pokémon from the response
+      const teamData = response.data;
+      const pokemons = teamData.pokemon;
+      setTeam(teamData);
+      console.log("Pokémons in the team:", pokemons);
+      
+    } catch (error) {
+      setSoundType("error");
+      console.error("Error fetching team data:", error);
+    }
+  };
+
+  const fetchSelected = async () => {
+    setSoundType("sfx");
+    try {
+  
+      const res = await fetch("http://https://json-server-yxws.onrender.com/teams");
+      const teams = await res.json();
+  
+      const selectedTeams = teams.filter(team => team.selected);
+  
+      const allPokemon = selectedTeams.flatMap(team => team.pokemon);
+  
+      if (allPokemon.length === 0) {
+        setSoundType("error");
+        setChosenPokemon([]); // Optional: clear previously chosen
+        console.warn("No Pokémon found in selected teams.");
+        return;
+      } else{
+        setSoundType("sfx");
+        setActiveBattlePage("computer1")
+      }
+  
+      console.log("Selected Pokémon:", allPokemon);
+      setCurrentIndex(0);
+      setChosenPokemon(allPokemon);
+  
+    } catch (error) {
+      console.error("Error fetching selected teams:", error);
+      setSoundType("error");
+    }
+  };
+  
+
+  useEffect(() => {
+    if (chosenPokemon.length > 0) {
+      console.log("Currently chosenPokemon Pokémon:", chosenPokemon[currentIndex]);
+    }
+  }, [chosenPokemon, currentIndex]);
+
+  const handlePrev = () => {
+    setSoundType("sfx");
+    setCurrentIndex(prev => {
+      const newIndex = (prev - 1 + chosenPokemon.length) % chosenPokemon.length;
+      return newIndex;
+    });
+  };
+  
+  const handleNext = () => {
+    setSoundType("sfx");
+    setCurrentIndex(prev => {
+      const newIndex = (prev + 1) % chosenPokemon.length;
+      return newIndex;
+    });
+  };
+
+  const fight = (arena) => {
+    const stats = ["HP", "ATTACK", "DEFENSE", "SP. ATTACK", "SP. DEFENSE", "SPEED"];
+  
+    const shuffled = stats.sort(() => 0.5 - Math.random());
+    const selectedStats = shuffled.slice(0, 3);
+  
+    console.log("Chosen Stats:", selectedStats);
+    if (arena === "computer1") {
+      console.log("Fetching 1 random Pokémon");
+    
+      const maxPokemonId = 1010; // Update this to the latest count when needed
+      const randomId = Math.floor(Math.random() * maxPokemonId) + 1;
+    
+      fetch(`https://pokeapi.co/api/v2/pokemon/${randomId}`)
+        .then(res => {
+          if (!res.ok) throw new Error("Pokémon not found");
+          return res.json();
+        })
+        .then(data => {
+          const randomPokemon = {
+            id: data.id,
+            name: data.name,
+            image: {
+              front:
+                data.sprites.versions['generation-v']['black-white'].animated.front_default ||
+                data.sprites.other['official-artwork'].front_default,
+              back:
+                data.sprites.versions['generation-v']['black-white'].animated.back_default ||
+                data.sprites.back_default
+            },
+            type: data.types.map(t => t.type.name),
+            stats: data.stats.map(stat => ({
+              name: stat.stat.name,
+              base: stat.base_stat
+            }))
+          };
+          console.log("Random Pokémon:", randomPokemon);
+          setActiveBattlePage("arena1");
+        })
+        .catch(err => {
+          console.error("Error fetching Pokémon:", err);
+        });
+    }
+     else if (arena === "computer2"){
+      console.log("Fetching 6 random pokemons");
+    }
+  };
+  
+  
 
   return (
     <>
       <div className="main-cont">
+        {showOverlay && (
+          <div className={`create-overlay active`}>
+            {/* <div>
+              <p>hi</p>
+              
+            </div> */}
+            <div className="walaMaisip">
+              <div className="ewan">
+                <h1>Enter Team Name</h1>
+                <input type="text" placeholder="Team name..." value={teamName} name="" id="" onChange={(e) => setTeamName(e.target.value)}/>
+                <div className="buttons">
+                  <button style={{backgroundColor:"Green"}} onClick={() => confirm()}>Confirm</button>
+                  <button style={{backgroundColor:"red"}} onClick={() => setShowOverlay(false)}>Close</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         {showModal && (
           <div className={`poke-modal-overlay ${showModal ? 'active' : ''}`}>
             <div className="poke-modal">
               {selectedPokemon === null || isLoading ? (
                 <div className="poke-modal loading">
+                  <img className="loaderbg" src="https://c10.patreonusercontent.com/4/patreon-media/p/campaign/7085984/52d860ed05d54982a1a61ee805c2a720/eyJ3Ijo5NjAsIndlIjoxfQ%3D%3D/8.jpg?token-time=1746316800&token-hash=YG5l6L5LNV0W6Meln9KPqFZCiMvRmJ5m-WnQxr8gj0Y%3D" alt="" />
                   <div className="loader"></div> 
                 </div>
               ) : (
@@ -480,8 +762,6 @@ function App() {
                         </div>
                     )}
 
-
-
                       {activeTab === "abilities" && (
                         <div className="tab-panel active">
                           <div className="ability-cont">
@@ -574,7 +854,7 @@ function App() {
                 Battle
                 <img className="menu-background" src="https://static.thenounproject.com/png/886706-200.png" alt="" />
               </button>
-              <button className="menu-button" style={{ padding: "1em" }} onClick={() => {switchPage("myteam");fetchTeam();}}>
+              <button className="menu-button" style={{ padding: "1em" }} onClick={() => {switchPage("myteam"); fetchTeams();}}>
                 My Team
                 <img className="menu-background" src="https://www.pokebeach.com/news/0510/pokemon-black-and-white-starter-pokemon-silhouettes-2.jpg" alt="" />
               </button>
@@ -631,6 +911,7 @@ function App() {
                 {loading
                   ? [...Array(20)].map((_, index) => (
                       <div className="pokecard loading" key={index}>
+                        <img className="loaderbg" src="https://c10.patreonusercontent.com/4/patreon-media/p/campaign/7085984/52d860ed05d54982a1a61ee805c2a720/eyJ3Ijo5NjAsIndlIjoxfQ%3D%3D/8.jpg?token-time=1746316800&token-hash=YG5l6L5LNV0W6Meln9KPqFZCiMvRmJ5m-WnQxr8gj0Y%3D" alt="" />
                         <div className="loader"></div> 
                       </div>
                     ))
@@ -691,106 +972,268 @@ function App() {
         {/* Other Pages */}
         <div className={`page ${activePage === "battle" ? "active" : ""}`}>
           
-          <div className="pokedex-cont" style={{justifyContent:"space-evenly"}}>
-            <img className="poked" src={pokearena} alt="" />
-            <div className="battle-choices">
-              <button>Vs. AI</button>
-              <button>Vs. AI (Group Battle)</button>
-              <button>PvP</button>
-              <button>PvP (Group Battle)</button>
+          <div className="pokedex-cont" style={{ justifyContent: "space-evenly" }}>
+            <div className={`battle-cont ${activeBattlePage === "choices" ? "active" : ""}`}>
+              <img className="poked" src={pokearena} alt="" />
+              <div className="battle-choices">
+                <button onClick={() => fetchSelected()}>
+                  Vs. AI
+                  <img className="menu-background" src="https://static.thenounproject.com/png/886706-200.png" alt="" />
+                </button>
+                <button onClick={() => setActiveBattlePage("computer2")}>
+                  Vs. AI (Group Battle)
+                  <img className="menu-background" src="https://static.thenounproject.com/png/886706-200.png" alt="" />
+                </button>
+                <button onClick={() => setActiveBattlePage("pvp1")}>
+                  PvP
+                  <img className="menu-background" src="https://static.thenounproject.com/png/886706-200.png" alt="" />
+                </button>
+                <button onClick={() => setActiveBattlePage("pvp2")}>
+                  PvP (Group Battle)
+                  <img className="menu-background" src="https://static.thenounproject.com/png/886706-200.png" alt="" />
+                </button>
+              </div>
+              <button className="back-btn" onClick={() => switchPage("menu")}>Back to Menu</button>
             </div>
-            <button className="back-btn" onClick={() => switchPage("menu")}>Back to Menu</button>
 
-          </div>
-        </div>
-
-        <div className={`page ${activePage === "myteam" ? "active" : ""}`}>
-          <div className="pokedex-cont">
-            <h1 className="page-title" >My Team Page</h1>
-            <div className="team-grid">
-              {Array.from({ length: 6 }).map((_, index) => {
-                const member = team[index];
-
-                return (
-                  <div className="main-pokemon" key={index}>
-                    {member ? (
-                      <>
-                        <div className="overlay-remove">
-                          <button onClick={() => removeFromTeam(member.id)}>
-                            <FaTrash />
-                          </button>
-                        </div>
-                        <div className="teammate">
-                          <div className="main-stats">
-                            <div className="left-stats">
-                              {member.stats && Array.isArray(member.stats) &&
-                                member.stats.slice(0, 3).map((stat, i) => {
-                                  const statLabels = ['HP', 'A', 'D'];
-                                  return (
-                                    <div className="wala" key={i}>
-                                      <strong>{statLabels[i]}</strong>
-                                      <p>{stat.base}</p>
-                                    </div>
-                                  );
-                                })}
-                            </div>
-                            <div className="right-stats">
-                              {member.stats && Array.isArray(member.stats) &&
-                                member.stats.slice(3).map((stat, i) => {
-                                  const statLabels = ['S.A.', 'S.D.', 'S'];
-                                  return (
-                                    <div className="wala" key={i + 3}>
-                                      <strong>{statLabels[i]}</strong>
-                                      <p>{stat.base}</p>
-                                    </div>
-                                  );
-                                })}
-                            </div>
-                          </div>
-                          <div className="backpoke">
-                            <img className="backpokepic" src={pokeball} alt="" />
-                          </div>
-                          <img
-                            className="teampic"
-                            src={member.image}
-                            alt={member.name}
-                            title={member.name}
-                          />
-                          <span className="poke-name">{member.name}</span>
-                          <div className="subtitles">
-                            {member.type && member.type.map((type, index) => (
-                              <span
-                                className={`subtitle ${type}`}
-                                key={index}
-                                style={{ padding: "2px", borderRadius: "10px" }}
-                              >
-                                {type.toUpperCase()}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      </>
-                    ) : (
-                      <>
+            <div className={`battle-cont ${activeBattlePage === "computer1" ? "active" : ""}`}>
+              <div className="title-cont">
+                <h1>Choose Pokemon</h1>
+                <button className="back-btn" onClick={() => setActiveBattlePage("choices")}>Back</button>
+              </div>
+              <div className="choosing">
+                <div className="carousel">
+                  {chosenPokemon.length > 0 && (
+                    <div className="item">
+                      <div className="item-images">
                         <div className="backpoke">
                           <img className="backpokepic" src={pokeball} alt="" />
                         </div>
-                        <span className="poke-span">+</span>
-                      </>
-                    )}
-                  </div>
-                );
-              })}
+                        <img src={chosenPokemon[currentIndex].image} alt={chosenPokemon[currentIndex].name} />
+                      </div>
+                      <div className="item-name">
+                        <strong>{chosenPokemon[currentIndex].name}</strong>
+                      </div>
+                    </div>
+                  )}
+                <div className="arrows-cont">
+                  <button onClick={handlePrev}><FaArrowLeft /></button>
+                  <button onClick={handleNext}><FaArrowRight /></button>
+                </div>
+              </div>
+
+              </div>
+              <button className="fight" onClick={() => fight(activeBattlePage)}>Fight</button>
             </div>
-            <button className="back-btn" onClick={() => switchPage("menu")}>Back to Menu</button>
+
+            <div className={`battle-cont ${activeBattlePage === "arena1" ? "active" : ""}`}>
+              <div className="arena">
+                <div className="fighting-pokemon">
+                  <div className="the-pokemon">
+                    <img src="https://img.pokemondb.net/sprites/brilliant-diamond-shining-pearl/normal/dialga.png" alt="" />
+                  </div>
+                  <div className="hud">
+                    <strong>Dialga</strong>
+                    <div className="health-bar">
+                      <div className="health">
+                        <p>HP</p>
+                        <div className="bar"></div>
+                      </div>
+                      <p>3/3</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="fighting-pokemon you">
+                  <div className="the-pokemon">
+                    <div className="backpoke">
+                      <img className="backpokepic" src={pokeball} alt="pokeball" />
+                    </div>
+                    <img src="https://img.pokemondb.net/sprites/brilliant-diamond-shining-pearl/normal/dialga.png" alt="" />
+                  </div>
+                  <div className="hud you">
+                    <strong className="strong you">Dialga</strong>
+                    <div className="health-bar.you">
+                      <div className="health">
+                        <p>HP</p>
+                        <div className="bar"></div>
+                      </div>
+                      <p style={{margin:"0"}}>3/3</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className={`battle-cont ${activeBattlePage === "computer2" ? "active" : ""}`}>
+              <h1>computer2</h1>
+              <button className="back-btn" onClick={() => setActiveBattlePage("choices")}>Back</button>
+            </div>
+
+            <div className={`battle-cont ${activeBattlePage === "pvp1" ? "active" : ""}`}>
+              <h1>pvp1</h1>
+              <button className="back-btn" onClick={() => setActiveBattlePage("choices")}>Back</button>
+            </div>
+
+            <div className={`battle-cont ${activeBattlePage === "pvp2" ? "active" : ""}`}>
+              <h1>pvp2</h1>
+              <button className="back-btn" onClick={() => setActiveBattlePage("choices")}>Back</button>
+            </div>
           </div>
         </div>
 
-        <div className={`page ${activePage === "history" ? "active" : ""}`}>
-          <h1>History Page</h1>
-          <button onClick={() => switchPage("menu")}>Back to Menu</button>
-        </div>
 
+        <div className={`page ${activePage === "myteam" ? "active" : ""}`}>
+          <div className="pokedex-cont">
+            <div className={`team-page ${activeTeam === "teams" ? "active" : ""}`}>
+              <h1>My Teams Page</h1>
+              <div className="poke-nav">
+                <button onClick={() => switchPage("menu")}>Back</button>
+                <div className="search-box">
+                  <input
+                    type="text"
+                    placeholder="Search Team..."
+                    onInput={(e) => handleInputChange(e.target.value)}
+                  />
+                  <img src={poke} alt="Search" />
+                </div>
+                <button onClick={() => setShowOverlay(true)}>Create</button>
+              </div>
+              <div className="poke-cont">
+                <div className="pokelist">
+                  {[...teams]
+                    .sort((a, b) => (b.selected ? 1 : 0) - (a.selected ? 1 : 0))
+                    .map((team) => (
+                      <div
+                        key={team.id}
+                        className="pokecard"
+                        style={{
+                          border: team.selected ? "5px dashed red" : "2px dashed #8a2be2",
+                          backgroundColor: "rgba(88, 28, 135, 0.3)",
+                        }}
+                      >
+                        <div className="pokecard-overlay">
+                          <button onClick={() => selectTeam(team.id)}>Select Team</button>
+                          <button onClick={() => viewTeam(team.id)}>View Team</button>
+                          <button onClick={() => deleteTeam(team.id)}>Delete Team</button>
+                        </div>
+                        <h1 className="teamName">{team.name}</h1>
+                        <div className="teamcard">
+                          {Array.from({ length: 6 }).map((_, index) => {
+                            const pokemon = team.pokemon[index];
+                            return (
+                              <div key={index} className="box">
+                                <div className="backpoke">
+                                  <img className="backpokepic" src={pokeball} alt="pokeball" />
+                                </div>
+                                {pokemon ? (
+                                  <img src={pokemon.front} alt={pokemon.name} />
+                                ) : (
+                                  <span className="poke-span">+</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+                <div className="navigations">
+                  <div className="paginations">
+                    <button onClick={() => currentPage > 1 && fetchPokemon(currentPage - 1, selectedType)}>Prev</button>
+                    <span>Page {currentPage}</span>
+                    <button onClick={() => fetchPokemon(currentPage + 1, selectedType)}>Next</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Single Team Page */}
+            <div className={`team-page ${activeTeam !== "teams" ? "active" : ""}`}>
+              <h1 className="page-title">My Team Page</h1>
+              <div className="team-grid">
+                {Array.from({ length: 6 }).map((_, index) => {
+                  const member = team.pokemon && team.pokemon[index];
+                  return (
+                    <div className="main-pokemon" key={index}>
+                      {member ? (
+                        <>
+                          <div className="overlay-remove">
+                            <button onClick={() => removeFromTeam(team.id, member.id)}>
+                              <FaTrash />
+                            </button>
+                          </div>
+                          <div className="teammate">
+                            <div className="main-stats">
+                              <div className="left-stats">
+                                {member.stats && Array.isArray(member.stats) &&
+                                  member.stats.slice(0, 3).map((stat, i) => {
+                                    const statLabels = ['HP', 'A', 'D'];
+                                    return (
+                                      <div className="wala" key={i}>
+                                        <strong>{statLabels[i]}</strong>
+                                        <p>{stat.base}</p>
+                                      </div>
+                                    );
+                                  })}
+                              </div>
+                              <div className="right-stats">
+                                {member.stats && Array.isArray(member.stats) &&
+                                  member.stats.slice(3).map((stat, i) => {
+                                    const statLabels = ['S.A.', 'S.D.', 'S'];
+                                    return (
+                                      <div className="wala" key={i + 3}>
+                                        <strong>{statLabels[i]}</strong>
+                                        <p>{stat.base}</p>
+                                      </div>
+                                    );
+                                  })}
+                              </div>
+                            </div>
+                            <div className="backpoke">
+                              <img className="backpokepic" src={pokeball} alt="" />
+                            </div>
+                            <img className="teampic" src={member.front} alt={member.name} title={member.name} />
+                            <span className="poke-name">{member.name}</span>
+                            <div className="subtitles">
+                              {member.type && member.type.map((type, index) => (
+                                <span
+                                  className={`subtitle ${type}`}
+                                  key={index}
+                                  style={{ padding: "2px", borderRadius: "10px" }}
+                                >
+                                  {type.toUpperCase()}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="backpoke">
+                            <img className="backpokepic" src={pokeball} alt="" />
+                          </div>
+                          <span className="poke-span">+</span>
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <button className="back-btn" onClick={() => {
+                setActiveTeam("teams");
+                fetchTeams();
+              }}>Back to Teams</button>
+            </div>
+          </div>
+        </div>
+        <div className={`page ${activePage === "history" ? "active" : ""}`}>
+          <div className="pokedex-cont">
+          <button className="back-btn" onClick={() => {
+                setActiveTeam("teams");
+                fetchTeams();
+              }}>Back to Teams</button>
+          </div>
+        </div>
         <div className={`page ${activePage === "favorites" ? "active" : ""}`}>
           <h1>favorites Page</h1>
           <button onClick={() => switchPage("menu")}>Back to Menu</button>
