@@ -291,7 +291,7 @@ function App() {
   const addToTeam = async (id) => {
     try {
       // Fetch all teams
-      const teamRes = await fetch('http://https://json-server-yxws.onrender.com/teams');
+      const teamRes = await fetch('https://json-server-yxws.onrender.com/teams');
       const allTeams = await teamRes.json();
   
       // Find the selected team
@@ -342,7 +342,7 @@ function App() {
         pokemon: [...selectedTeam.pokemon, newPokemon]
       };
   
-      await fetch(`http://https://json-server-yxws.onrender.com/teams/${selectedTeam.id}`, {
+      await fetch(`https://https://json-server-yxws.onrender.com/teams/${selectedTeam.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
@@ -373,7 +373,7 @@ function App() {
   const fetchTeams = async () => {
 
     try {
-      const response = await fetch("http://https://json-server-yxws.onrender.com/teams");
+      const response = await fetch("https://json-server-yxws.onrender.com/teams");
       if (!response.ok) {
         throw new Error("Failed to fetch teams");
       }
@@ -388,14 +388,14 @@ function App() {
   const removeFromTeam = async (teamId, pokemonId) => {
     try {
       // Get the team first (optional, or use from local state)
-      const teamRes = await axios.get(`http://https://json-server-yxws.onrender.com/teams/${teamId}`);
+      const teamRes = await axios.get(`https://json-server-yxws.onrender.com/teams/${teamId}`);
       const team = teamRes.data;
   
       // Filter out the Pokémon to remove
       const updatedPokemonList = team.pokemon.filter(p => p.id !== pokemonId);
   
       // Update the team with the new Pokémon list
-      await axios.patch(`http://localhost:3001/teams/${teamId}`, {
+      await axios.patch(`https://json-server-yxws.onrender.com/teams/${teamId}`, {
         pokemon: updatedPokemonList
       });
   
@@ -415,7 +415,7 @@ function App() {
 
   const deleteTeam = async (id) => {
     try {
-      await axios.delete(`http://https://json-server-yxws.onrender.com/teams/${id}`);
+      await axios.delete(`https://json-server-yxws.onrender.com/teams/${id}`);
   
       setSoundType("sfx");
   
@@ -436,7 +436,7 @@ function App() {
     };
   
     const deselectPromises = teams.map(team =>
-      fetch(`http://https://json-server-yxws.onrender.com/teams/${team.id}`, {
+      fetch(`https://json-server-yxws.onrender.com/teams/${team.id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json"
@@ -447,7 +447,7 @@ function App() {
   
     Promise.all(deselectPromises)
       .then(() =>
-        fetch("http://https://json-server-yxws.onrender.com/teams", {
+        fetch("https://json-server-yxws.onrender.com/teams", {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
@@ -475,7 +475,7 @@ function App() {
       const deselectPromises = teams
         .filter(team => team.selected || team.id === id)
         .map(team =>
-          axios.patch(`http://https://json-server-yxws.onrender.com/teams/${team.id}`, {
+          axios.patch(`https://json-server-yxws.onrender.com/teams/${team.id}`, {
             selected: team.id === id,
           })
         );
@@ -502,7 +502,7 @@ function App() {
 
     try {
       // Fetch team data by ID
-      const response = await axios.get(`http://https://json-server-yxws.onrender.com/teams/${id}`);
+      const response = await axios.get(`https://json-server-yxws.onrender.com/teams/${id}`);
       
       // Extract the Pokémon from the response
       const teamData = response.data;
@@ -520,7 +520,7 @@ function App() {
     setSoundType("sfx");
     try {
   
-      const res = await fetch("http://https://json-server-yxws.onrender.com/teams");
+      const res = await fetch("https://json-server-yxws.onrender.com/teams");
       const teams = await res.json();
   
       const selectedTeams = teams.filter(team => team.selected);
