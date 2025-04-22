@@ -8,6 +8,7 @@ import trainer from "./assets/trainer.png"
 import pokedex from "./assets/poked.png"
 import pokearena from "./assets/pba_logo.png"
 import bg from "./assets/bg.mp3"
+import battle from "./assets/battle.mp3"
 import sfx from "./assets/sfx.mp3";
 import error from "./assets/error.mp3";
 import captured from "./assets/captured.mp3";
@@ -34,10 +35,18 @@ function App() {
   const [teamName, setTeamName] = useState("");
   const [activeTeam, setActiveTeam] = useState("teams");
   const [activeBattlePage, setActiveBattlePage] = useState("choices");
+  const [randomPokemon, setRandomPokemon] = useState(null);
   const [chosenPokemon, setChosenPokemon] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentStat, setCurrentStat] = useState("");
+  const [yourStatValue, setYourStatValue] = useState(null);
+  const [enemyStatValue, setEnemyStatValue] = useState(null);
+  const [roundResult, setRoundResult] = useState(""); 
+  const [finalBattleResult, setFinalBattleResult] = useState("");
 
 
+  const [yourHealth, setYourHealth] = useState(100);
+  const [enemyHealth, setEnemyHealth] = useState(100);
 
   const sounds = {
     sfx,
@@ -66,19 +75,37 @@ function App() {
     }
   }, [pokemonList,soundType])
 
-  const playMusic = () => {
-    if (!bgMusic) {
-      const music = new Audio(bg);
+  const playMusic = (track = "bg") => {
+    const selectedTrack = track === "battle" ? battle : bg;
+  
+    if (bgMusic) {
+      if (bgMusic.src.includes(selectedTrack)) {
+        bgMusic.play().catch(err => {
+          console.error("Autoplay failed:", err);
+        });
+      } else {
+        bgMusic.pause();
+        bgMusic.currentTime = 0;
+        const newMusic = new Audio(selectedTrack);
+        newMusic.loop = true;
+        newMusic.volume = 0.3;
+        newMusic.play().catch(err => {
+          console.error("Autoplay failed:", err);
+        });
+        setBgMusic(newMusic);
+      }
+    } else {
+      // First-time play
+      const music = new Audio(selectedTrack);
       music.loop = true;
       music.volume = 0.3;
       music.play().catch(err => {
         console.error("Autoplay failed:", err);
       });
       setBgMusic(music);
-    } else {
-      bgMusic.play();
     }
   };
+  
 
   const fetchPokemon = async (page = 1, type = null) => {
     try {
@@ -342,7 +369,7 @@ function App() {
         pokemon: [...selectedTeam.pokemon, newPokemon]
       };
   
-      await fetch(`https://https://json-server-yxws.onrender.com/teams/${selectedTeam.id}`, {
+      await fetch(`https://json-server-yxws.onrender.com/teams/${selectedTeam.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
@@ -499,12 +526,8 @@ function App() {
 
   const viewTeam = async (id) => {
     setActiveTeam("pokemons")
-
     try {
-      // Fetch team data by ID
       const response = await axios.get(`https://json-server-yxws.onrender.com/teams/${id}`);
-      
-      // Extract the Pokémon from the response
       const teamData = response.data;
       const pokemons = teamData.pokemon;
       setTeam(teamData);
@@ -529,7 +552,7 @@ function App() {
   
       if (allPokemon.length === 0) {
         setSoundType("error");
-        setChosenPokemon([]); // Optional: clear previously chosen
+        setChosenPokemon([]); 
         console.warn("No Pokémon found in selected teams.");
         return;
       } else{
@@ -569,20 +592,19 @@ function App() {
       return newIndex;
     });
   };
-
   const fight = (arena) => {
-    const stats = ["HP", "ATTACK", "DEFENSE", "SP. ATTACK", "SP. DEFENSE", "SPEED"];
-  
+    const stats = ["HP", "ATTACK", "DEFENSE", "SPECIAL-ATTACK", "SPECIAL-DEFENSE", "SPEED"];
     const shuffled = stats.sort(() => 0.5 - Math.random());
     const selectedStats = shuffled.slice(0, 3);
-  
     console.log("Chosen Stats:", selectedStats);
+  
     if (arena === "computer1") {
       console.log("Fetching 1 random Pokémon");
-    
-      const maxPokemonId = 1010; // Update this to the latest count when needed
+      console.log("My Chosen Pokémon:", chosenPokemon[currentIndex]);
+  
+      const maxPokemonId = 1010;
       const randomId = Math.floor(Math.random() * maxPokemonId) + 1;
-    
+  
       fetch(`https://pokeapi.co/api/v2/pokemon/${randomId}`)
         .then(res => {
           if (!res.ok) throw new Error("Pokémon not found");
@@ -593,32 +615,87 @@ function App() {
             id: data.id,
             name: data.name,
             image: {
-              front:
-                data.sprites.versions['generation-v']['black-white'].animated.front_default ||
+              front: data.sprites.versions['generation-v']['black-white'].animated.front_default ||
                 data.sprites.other['official-artwork'].front_default,
-              back:
-                data.sprites.versions['generation-v']['black-white'].animated.back_default ||
+              back: data.sprites.versions['generation-v']['black-white'].animated.back_default ||
                 data.sprites.back_default
             },
             type: data.types.map(t => t.type.name),
             stats: data.stats.map(stat => ({
-              name: stat.stat.name,
+              name: stat.stat.name.toUpperCase(),
               base: stat.base_stat
             }))
           };
+  
           console.log("Random Pokémon:", randomPokemon);
+          setRandomPokemon(randomPokemon);
           setActiveBattlePage("arena1");
+          playMusic("battle");
+  
+          // Delay for 2 seconds before calling showComparison
+          setTimeout(() => {
+            // ✅ Now call the showComparison function
+            showComparison(selectedStats, randomPokemon);
+          }, 5000);
         })
         .catch(err => {
           console.error("Error fetching Pokémon:", err);
         });
-    }
-     else if (arena === "computer2"){
+    } else if (arena === "computer2") {
       console.log("Fetching 6 random pokemons");
+      // ... to be implemented
     }
   };
   
+  const showComparison = async (selectedStats, randomPokemon) => {
+    let myScore = 0;
+    let enemyScore = 0;
+    const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
   
+    for (let i = 0; i < selectedStats.length; i++) {
+      const statName = selectedStats[i];
+      const myStat = chosenPokemon[currentIndex].stats.find(stat => stat.name.toUpperCase() === statName)?.base || 0;
+      const enemyStat = randomPokemon.stats.find(stat => stat.name.toUpperCase() === statName)?.base || 0;
+  
+      setCurrentStat(statName);
+      setYourStatValue(myStat);
+      setEnemyStatValue(enemyStat);
+  
+      if (myStat > enemyStat) {
+        myScore++;
+        setRoundResult("✅ You won this round!");
+        setEnemyHealth(prevHealth => prevHealth - 33);
+      } else if (enemyStat > myStat) {
+        enemyScore++;
+        setRoundResult("❌ You lost this round!");
+        setYourHealth(prevHealth => prevHealth - 33);
+      } else {
+        setRoundResult("🤝 It's a tie this round!");
+      }
+  
+      await delay(2000);  // Adding a delay of 3 seconds between rounds
+    }
+  
+    const final = myScore >= 2
+      ? "🏆 You Win!"
+      : enemyScore >= 2
+      ? "💀 You Lose!"
+      : "🤝 It's a Tie!";
+  
+    setFinalBattleResult(final);
+  };
+  
+  const HealthBar = ({ health }) => {
+    return (
+      <div className="health-bar">
+        <div className="health">
+          <p>HP</p>
+          <div className="bar" style={{ width: `${health}%` }}></div>
+        </div>
+        <p>{health}/100</p>
+      </div>
+    );
+  };
 
   return (
     <>
@@ -1028,37 +1105,52 @@ function App() {
 
             <div className={`battle-cont ${activeBattlePage === "arena1" ? "active" : ""}`}>
               <div className="arena">
+
+                
+                <div className="battle-stats">
+                  <div className="vs-stats">
+                    
+                    <div className="the-stats you">
+                      
+                      <strong>{currentStat}</strong>
+                      <p>{yourStatValue !== null ? yourStatValue : "..."}</p>
+                    </div>
+                    <div className="the-stats ">
+                      <strong>{currentStat}</strong>
+                      <p>{enemyStatValue !== null ? enemyStatValue : "..."}</p>
+                    </div>
+                  </div>
+
+                  <div className="results">
+                    {!finalBattleResult && <p>{roundResult}</p>}
+                    {finalBattleResult && (
+                      <h2 className="final-result">{finalBattleResult}</h2> 
+                    )}
+                  </div>
+                </div>
                 <div className="fighting-pokemon">
                   <div className="the-pokemon">
-                    <img src="https://img.pokemondb.net/sprites/brilliant-diamond-shining-pearl/normal/dialga.png" alt="" />
+                    <img 
+                      style={{height:"60%"}}
+                      src={randomPokemon?.image?.front || "https://img.pokemondb.net/sprites/brilliant-diamond-shining-pearl/normal/dialga.png"} 
+                      alt={randomPokemon?.name || "Dialga"} 
+                    />
                   </div>
                   <div className="hud">
-                    <strong>Dialga</strong>
-                    <div className="health-bar">
-                      <div className="health">
-                        <p>HP</p>
-                        <div className="bar"></div>
-                      </div>
-                      <p>3/3</p>
-                    </div>
+                    <strong className="strong">{randomPokemon?.name || "Unkown"}</strong>
+                    <HealthBar health={enemyHealth} />
                   </div>
                 </div>
                 <div className="fighting-pokemon you">
                   <div className="the-pokemon">
-                    <div className="backpoke">
-                      <img className="backpokepic" src={pokeball} alt="pokeball" />
-                    </div>
-                    <img src="https://img.pokemondb.net/sprites/brilliant-diamond-shining-pearl/normal/dialga.png" alt="" />
+                    <img 
+                      src={chosenPokemon[currentIndex]?.back || chosenPokemon[currentIndex]?.image || "https://img.pokemondb.net/sprites/brilliant-diamond-shining-pearl/normal/dialga.png"} 
+                      alt={chosenPokemon[currentIndex]?.name || "Dialga"} 
+                    />
                   </div>
                   <div className="hud you">
-                    <strong className="strong you">Dialga</strong>
-                    <div className="health-bar.you">
-                      <div className="health">
-                        <p>HP</p>
-                        <div className="bar"></div>
-                      </div>
-                      <p style={{margin:"0"}}>3/3</p>
-                    </div>
+                    <strong className="strong you">{chosenPokemon[currentIndex]?.name || "Dialga"}</strong>
+                    <HealthBar health={yourHealth} />
                   </div>
                 </div>
               </div>
