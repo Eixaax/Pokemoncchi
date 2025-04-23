@@ -6,6 +6,7 @@ import pokeball from "./assets/pokeball.png"
 import poke from "./assets/poke.png"
 import trainer from "./assets/trainer.png"
 import pokedex from "./assets/poked.png"
+import grass from "./assets/grass.png"
 import pokearena from "./assets/pba_logo.png"
 import bg from "./assets/bg.mp3"
 import battle from "./assets/battle.mp3"
@@ -14,6 +15,9 @@ import error from "./assets/error.mp3";
 import captured from "./assets/captured.mp3";
 import axios from "axios"
 import { FaArrowLeft, FaArrowRight, FaEye, FaBookmark, FaPlus, FaTrash } from 'react-icons/fa';
+import { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
+
 
 function App() {
   const [activePage, setActivePage] = useState("landing");
@@ -43,10 +47,24 @@ function App() {
   const [enemyStatValue, setEnemyStatValue] = useState(null);
   const [roundResult, setRoundResult] = useState(""); 
   const [finalBattleResult, setFinalBattleResult] = useState("");
-
+  const [activeHistory, setActiveHistory] = useState("history");
 
   const [yourHealth, setYourHealth] = useState(100);
   const [enemyHealth, setEnemyHealth] = useState(100);
+
+  const [battles, setBattles] = useState([]);
+  const [battleLog, setBattleLog] = useState("");
+
+  const statAbbreviations = {
+    hp: "HP",
+    attack: "A",
+    defense: "D",
+    "special-attack": "S.P.",
+    "special-defense": "S.D.",
+    speed: "S"
+  };
+
+
 
   const sounds = {
     sfx,
@@ -79,6 +97,7 @@ function App() {
     const selectedTrack = track === "battle" ? battle : bg;
   
     if (bgMusic) {
+      
       if (bgMusic.src.includes(selectedTrack)) {
         bgMusic.play().catch(err => {
           console.error("Autoplay failed:", err);
@@ -88,17 +107,16 @@ function App() {
         bgMusic.currentTime = 0;
         const newMusic = new Audio(selectedTrack);
         newMusic.loop = true;
-        newMusic.volume = 0.3;
+        newMusic.volume = 0.2;
         newMusic.play().catch(err => {
           console.error("Autoplay failed:", err);
         });
         setBgMusic(newMusic);
       }
     } else {
-      // First-time play
       const music = new Audio(selectedTrack);
       music.loop = true;
-      music.volume = 0.3;
+      music.volume = 0.2;
       music.play().catch(err => {
         console.error("Autoplay failed:", err);
       });
@@ -141,6 +159,7 @@ function App() {
       setCurrentPage(page);
       setLoading(false);
     } catch (error) {
+      toast.error("Error fetching Pokémon");
       console.error("Failed to fetch Pokémon:", error);
       setLoading(false);
     }
@@ -171,22 +190,21 @@ function App() {
           return details.data;
         })
       );
-  
+      
       setPokemonList(detailedData);
       setLoading(false);
     } catch (err) {
       console.error("Search error:", err);
       setLoading(false);
+      toast.error("Search error");
     }
   };
 
   const toggleFilter = () => {
     setShowFilter(prev => !prev);
-    setSoundType("sfx")
   };
 
   const handleTypeFilterClick = (type) => {
-    setSoundType("sfx")
     setSearchTerm("");
     setSelectedType(type);
     setCurrentPage(1);
@@ -194,22 +212,19 @@ function App() {
   };
 
   const switchPage = (page) => {
-    setSoundType("sfx")
+    
     setActivePage(page)
   }
 
   const closeModal = () => {
-    setSoundType("sfx")
     setShowModal(false);
   };
 
   const handleTabClick = (tab) => {
-    setSoundType("sfx")
     setActiveTab(tab);
   };
 
   const handleViewClick = async (id) => {
-    setSoundType("sfx")
     setIsLoading(true);
     setShowModal(true);
     setSelectedPokemon(null);
@@ -245,7 +260,6 @@ function App() {
   
         category = englishCategory ? englishCategory.genus : 'Unknown';
   
-        // Get evolution chain
         const evolutionChainUrl = speciesData.evolution_chain.url;
         const evoRes = await fetch(evolutionChainUrl);
         const evoData = await evoRes.json();
@@ -275,7 +289,6 @@ function App() {
         console.warn(`Species data not found for Pokémon ${id}`);
       }
   
-      // Fetch abilities with descriptions
       const abilitiesWithDescriptions = await Promise.all(
         (data.abilities || []).map(async (ability) => {
           try {
@@ -309,6 +322,7 @@ function App() {
       });
   
     } catch (error) {
+      toast.error("Failed to fetch Pokémon data");
       console.error("Failed to fetch Pokémon data:", error);
     } finally {
       setIsLoading(false);
@@ -317,32 +331,29 @@ function App() {
   
   const addToTeam = async (id) => {
     try {
-      // Fetch all teams
       const teamRes = await fetch('https://json-server-yxws.onrender.com/teams');
       const allTeams = await teamRes.json();
   
-      // Find the selected team
       const selectedTeam = allTeams.find(team => team.selected === true);
       if (!selectedTeam) {
-        alert("No team is selected.");
         setSoundType("error");
+        toast.error("No team is selected");
         return;
       }
   
       if (selectedTeam.pokemon.length >= 6) {
-        alert("Selected team is already full!");
+        toast.error("Selected team is already full!");
         setSoundType("error");
         return;
       }
   
-      // Fetch Pokémon data
       const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
       const data = await res.json();
   
-      // Check for duplicate
       const alreadyInTeam = selectedTeam.pokemon.some(poke => poke.id === data.id);
       if (alreadyInTeam) {
         alert(`${data.name} is already in your team!`);
+        toast.error(`${data.name} is already in your team!`);
         setSoundType("error");
         return;
       }
@@ -378,25 +389,15 @@ function App() {
       });
   
       setSoundType("captured");
+      toast.success(`${data.name} captured successfully!`);
       console.log(`${data.name} added to ${selectedTeam.name}!`);
     } catch (err) {
       console.error("Failed to add to team:", err);
+      toast.error("Failed to add to team");
       setSoundType("error");
     }
   };
   
-  
-
-  // const fetchTeam = async () => {
-  //   try {
-  //     const res = await fetch('http://localhost:3001/team');
-  //     const teamData = await res.json();
-  //     setTeam(teamData);
-  //   } catch (error) {
-  //     console.error("Failed to fetch team:", error);
-  //   }
-  // };
-
   const fetchTeams = async () => {
 
     try {
@@ -409,26 +410,23 @@ function App() {
       setTeams(data);
     } catch (error) {
       console.error("Error fetching teams:", error);
+      toast.error("Error fetching teams");
     }
   };
 
   const removeFromTeam = async (teamId, pokemonId) => {
     try {
-      // Get the team first (optional, or use from local state)
       const teamRes = await axios.get(`https://json-server-yxws.onrender.com/teams/${teamId}`);
       const team = teamRes.data;
   
-      // Filter out the Pokémon to remove
       const updatedPokemonList = team.pokemon.filter(p => p.id !== pokemonId);
   
-      // Update the team with the new Pokémon list
       await axios.patch(`https://json-server-yxws.onrender.com/teams/${teamId}`, {
         pokemon: updatedPokemonList
       });
   
       setSoundType("sfx");
   
-      // Update your local state
       setTeam(prev =>
         prev.id === teamId ? { ...prev, pokemon: updatedPokemonList } : prev
       );
@@ -436,6 +434,7 @@ function App() {
     } catch (error) {
       setSoundType("error");
       console.error("Error removing Pokémon from team:", error);
+      toast.error("Error removing Pokemon from team!");
     }
   };
   
@@ -450,10 +449,16 @@ function App() {
     } catch (error) {
       setSoundType("error");
       console.error("Error removing Pokémon from team:", error);
+      toast.error("Error removing Team!");
     }
   };
 
   const confirm = () => {
+    if (!teamName.trim()) {
+      toast.error("Please enter a team name");
+      return;
+    }
+
     console.log("Team Name:", teamName);
   
     const newTeam = {
@@ -485,20 +490,24 @@ function App() {
       .then(res => res.json())
       .then(data => {
         console.log("Team added:", data);
+        toast.success("Team Added Successfully!");
         setTeams(prev => {
           const updated = prev.map(t => ({ ...t, selected: false }));
           return [...updated, data];
         });
         setShowOverlay(false);
       })
-      .catch(err => console.error("Error adding team:", err));
+      .catch(err => {
+        console.error("Error adding team:", err);
+        toast.error("Error creating team");
+      });
+      
   };
   
   
 
   const selectTeam = async (id) => {
     try {
-      // Deselect all teams in the backend
       const deselectPromises = teams
         .filter(team => team.selected || team.id === id)
         .map(team =>
@@ -509,7 +518,6 @@ function App() {
   
       await Promise.all(deselectPromises);
   
-      // Update local state
       const updatedTeams = teams.map(team => ({
         ...team,
         selected: team.id === id,
@@ -517,8 +525,10 @@ function App() {
   
       setTeams(updatedTeams);
       setSoundType("sfx");
+      toast.success("Team Selected Successfully!");
     } catch (error) {
       console.error("Error selecting team:", error);
+      toast.error("Error selecting team!");
       setSoundType("error");
     }
   };
@@ -531,11 +541,10 @@ function App() {
       const teamData = response.data;
       const pokemons = teamData.pokemon;
       setTeam(teamData);
-      console.log("Pokémons in the team:", pokemons);
       
     } catch (error) {
       setSoundType("error");
-      console.error("Error fetching team data:", error);
+      toast.success("Error fetching team data");
     }
   };
 
@@ -553,7 +562,7 @@ function App() {
       if (allPokemon.length === 0) {
         setSoundType("error");
         setChosenPokemon([]); 
-        console.warn("No Pokémon found in selected teams.");
+        toast.error("Your Poketeam is empty!");
         return;
       } else{
         setSoundType("sfx");
@@ -566,6 +575,7 @@ function App() {
   
     } catch (error) {
       console.error("Error fetching selected teams:", error);
+      toast.error("Error fetching selected teams");
       setSoundType("error");
     }
   };
@@ -592,6 +602,7 @@ function App() {
       return newIndex;
     });
   };
+
   const fight = (arena) => {
     const stats = ["HP", "ATTACK", "DEFENSE", "SPECIAL-ATTACK", "SPECIAL-DEFENSE", "SPEED"];
     const shuffled = stats.sort(() => 0.5 - Math.random());
@@ -614,12 +625,13 @@ function App() {
           const randomPokemon = {
             id: data.id,
             name: data.name,
-            image: {
-              front: data.sprites.versions['generation-v']['black-white'].animated.front_default ||
-                data.sprites.other['official-artwork'].front_default,
-              back: data.sprites.versions['generation-v']['black-white'].animated.back_default ||
-                data.sprites.back_default
-            },
+            image: data.sprites.other['official-artwork'].front_default,
+            front:
+              data.sprites.versions['generation-v']?.['black-white']?.animated?.front_default ||
+              data.sprites.front_default,
+            back:
+              data.sprites.versions['generation-v']?.['black-white']?.animated?.back_default ||
+              data.sprites.back_default,
             type: data.types.map(t => t.type.name),
             stats: data.stats.map(stat => ({
               name: stat.stat.name.toUpperCase(),
@@ -632,18 +644,16 @@ function App() {
           setActiveBattlePage("arena1");
           playMusic("battle");
   
-          // Delay for 2 seconds before calling showComparison
           setTimeout(() => {
-            // ✅ Now call the showComparison function
             showComparison(selectedStats, randomPokemon);
           }, 5000);
         })
         .catch(err => {
+          toast.error("Error fetching Pokémon");
           console.error("Error fetching Pokémon:", err);
         });
     } else if (arena === "computer2") {
       console.log("Fetching 6 random pokemons");
-      // ... to be implemented
     }
   };
   
@@ -651,6 +661,8 @@ function App() {
     let myScore = 0;
     let enemyScore = 0;
     const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+  
+    const battleLog = [];
   
     for (let i = 0; i < selectedStats.length; i++) {
       const statName = selectedStats[i];
@@ -661,29 +673,146 @@ function App() {
       setYourStatValue(myStat);
       setEnemyStatValue(enemyStat);
   
+      let winnerId = null;
+      let roundMessage = "";
+  
       if (myStat > enemyStat) {
         myScore++;
-        setRoundResult("✅ You won this round!");
-        setEnemyHealth(prevHealth => prevHealth - 33);
+        winnerId = chosenPokemon[currentIndex].id;
+        roundMessage = `✅ ${chosenPokemon[currentIndex].name} won this round!`;
       } else if (enemyStat > myStat) {
         enemyScore++;
-        setRoundResult("❌ You lost this round!");
-        setYourHealth(prevHealth => prevHealth - 33);
+        winnerId = randomPokemon.id;
+        roundMessage = `❌ ${randomPokemon.name} won this round!`;
       } else {
-        setRoundResult("🤝 It's a tie this round!");
+        roundMessage = "🤝 It's a tie this round!";
       }
   
-      await delay(2000);  // Adding a delay of 3 seconds between rounds
+      battleLog.push({
+        stat: statName,
+        userStat: myStat,
+        computerStat: enemyStat,
+        result: winnerId  
+      });
+  
+      await delay(1000);
+      setRoundResult(roundMessage);
+  
+      await delay(1000);
+      if (myStat > enemyStat) {
+        setEnemyHealth(prev => prev - 33);
+      } else if (enemyStat > myStat) {
+        setYourHealth(prev => prev - 33);
+      }
+  
+      await delay(500);
+      setRoundResult("");
     }
   
-    const final = myScore >= 2
-      ? "🏆 You Win!"
+    let finalWinnerId = null;
+    if (myScore >= 2) {
+      finalWinnerId = chosenPokemon[currentIndex].id;
+    } else if (enemyScore >= 2) {
+      finalWinnerId = randomPokemon.id;
+    }
+  
+    const finalResultMessage = myScore >= 2
+      ? `🏆 ${chosenPokemon[currentIndex].name} Wins!`
       : enemyScore >= 2
-      ? "💀 You Lose!"
+      ? `💀 ${randomPokemon.name} Wins!`
       : "🤝 It's a Tie!";
   
-    setFinalBattleResult(final);
+    setFinalBattleResult(finalResultMessage);
+  
+    const resultData = {
+      userPokemon: chosenPokemon[currentIndex], 
+      computerPokemon: randomPokemon,          
+      selectedStats,
+      battleLog,
+      result: finalWinnerId 
+    };
+  
+    fetch("https://json-server-yxws.onrender.com/battles", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(resultData)
+    })
+      .then(res => res.json())
+      .then(data => {
+        console.log("Battle saved:", data);
+        toast("Battle saved");
+      })
+      .catch(err => {
+        console.error("Failed to save battle:", err);
+        toast.error("Failed to save battle");
+      });
   };
+  
+  
+  const clearing = () => {
+    setRandomPokemon(null);
+    setEnemyHealth(100);
+    setYourHealth(100);
+    setCurrentStat(null);
+    setYourStatValue(null);
+    setEnemyStatValue(null);
+    setRoundResult(null); 
+    setFinalBattleResult(null);
+    playMusic(null)
+  };
+
+  const fetchHistory = async () => {
+    setActiveHistory("history");
+    try {
+      const response = await fetch('https://json-server-yxws.onrender.com/battles');
+      const data = await response.json();
+      setBattles(data);
+    } catch (error) {
+      console.error('Failed to fetch battle history:', error);
+      toast.error("Failed to fetch battle history");
+    }
+  };
+
+  const viewBattleLog = async (id) => {
+    setActiveHistory("details");
+    
+    console.log(id);
+    try {
+      const response = await fetch(`https://json-server-yxws.onrender.com/battles/${id}`);
+      const data = await response.json();
+      if (response.ok) {
+        setBattleLog(data); 
+        console.log(battleLog);
+        
+      } else {  
+        console.error('Failed to fetch battle log:', data);
+        toast.error("Failed to fetch battle log");
+      }
+    } catch (error) {
+      console.error('Failed to fetch battle log:', error);
+      toast.error("Failed to fetch battle log");
+    }
+}
+
+const handleSearch = (query) => {
+  fetch("https://json-server-yxws.onrender.com/teams")
+    .then(res => res.json())
+    .then(data => {
+      const filteredTeams = data.filter(team =>
+        team.name.toLowerCase().includes(query.toLowerCase())
+      );
+      setTeams(filteredTeams); 
+    })
+    .catch(error => {
+      console.error("Error fetching teams:", error);
+      toast.error("Failed to fetch teams");
+    });
+};
+
+
+  
   
   const HealthBar = ({ health }) => {
     return (
@@ -699,20 +828,23 @@ function App() {
 
   return (
     <>
+      <Toaster
+        position="top-center"
+        reverseOrder={false}
+      />
       <div className="main-cont">
+        <div className="alert-overlay">
+          
+        </div>
         {showOverlay && (
           <div className={`create-overlay active`}>
-            {/* <div>
-              <p>hi</p>
-              
-            </div> */}
             <div className="walaMaisip">
               <div className="ewan">
                 <h1>Enter Team Name</h1>
                 <input type="text" placeholder="Team name..." value={teamName} name="" id="" onChange={(e) => setTeamName(e.target.value)}/>
                 <div className="buttons">
-                  <button style={{backgroundColor:"Green"}} onClick={() => confirm()}>Confirm</button>
-                  <button style={{backgroundColor:"red"}} onClick={() => setShowOverlay(false)}>Close</button>
+                  <button style={{backgroundColor:"Green"}} onClick={() => {confirm();setSoundType("sfx")}}>Confirm</button>
+                  <button style={{backgroundColor:"red"}} onClick={() => {setShowOverlay(false);setSoundType("sfx")}}>Close</button>
                 </div>
               </div>
             </div>
@@ -728,7 +860,7 @@ function App() {
                 </div>
               ) : (
                 <>
-                  <button className="close-button" onClick={closeModal}>×</button>
+                  <button className="close-button" onClick={() => {closeModal();setSoundType("sfx")}}>×</button>
 
                   {/* Upper Section */}
                   <div className={`poke-modal-header ${selectedPokemon.types[0].type.name}`}>
@@ -774,25 +906,25 @@ function App() {
                     <div className="tab-buttons">
                       <button
                         className={`tab-button ${activeTab === "about" ? "active" : ""}`}
-                        onClick={() => handleTabClick("about")}
+                        onClick={() => {handleTabClick("about");setSoundType("sfx")}}
                       >
                         About
                       </button>
                       <button
                         className={`tab-button ${activeTab === "stats" ? "active" : ""}`}
-                        onClick={() => handleTabClick("stats")}
+                        onClick={() => {handleTabClick("stats");setSoundType("sfx")}}
                       >
                         Stats
                       </button>
                       <button
                         className={`tab-button ${activeTab === "abilities" ? "active" : ""}`}
-                        onClick={() => handleTabClick("abilities")}
+                        onClick={() => {handleTabClick("abilities");setSoundType("sfx")}}
                       >
                         Abilities
                       </button>
                       <button
                         className={`tab-button ${activeTab === "evolutions" ? "active" : ""}`}
-                        onClick={() => handleTabClick("evolutions")}
+                        onClick={() => {handleTabClick("evolutions");setSoundType("sfx")}}
                       >
                         Evolutions
                       </button>
@@ -905,12 +1037,11 @@ function App() {
             />
           </div>
 
-          <button className="start-button" onClick={() => {switchPage("menu"); playMusic()}}>
+          <button className="start-button" onClick={() => {switchPage("menu"); playMusic();setSoundType("sfx")}}>
             Start
           </button>
         </div>
 
-        {/* Menu Page */}
         <div className={`menu-container page ${activePage === "menu" ? "active" : ""}`}>
           <div className="menu-content">
             <div className="background-section">
@@ -923,27 +1054,27 @@ function App() {
             </div>
 
             <div className="menu-grid">
-              <button className="menu-button" onClick={() => { switchPage("pokedex"); fetchPokemon(1); }}>
+              <button className="menu-button" onClick={() => { switchPage("pokedex"); fetchPokemon(1);setSoundType("sfx")}}>
                 Pokedex
                 <img className="menu-background" style={{filter:"grayscale(100%)"}} src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRS-JU85QybmyJqmbBFy9uXFaFzBAiPXDkIkw&s" alt="" />
                </button>
-              <button className="menu-button" onClick={() => switchPage("battle")}>
+              <button className="menu-button" onClick={() => {switchPage("battle");setSoundType("sfx")}}>
                 Battle
                 <img className="menu-background" src="https://static.thenounproject.com/png/886706-200.png" alt="" />
               </button>
-              <button className="menu-button" style={{ padding: "1em" }} onClick={() => {switchPage("myteam"); fetchTeams();}}>
+              <button className="menu-button" style={{ padding: "1em" }} onClick={() => {switchPage("myteam"); fetchTeams();setSoundType("sfx")}}>
                 My Team
                 <img className="menu-background" src="https://www.pokebeach.com/news/0510/pokemon-black-and-white-starter-pokemon-silhouettes-2.jpg" alt="" />
               </button>
-              <button className="menu-button" onClick={() => switchPage("history")}>
+              <button className="menu-button" onClick={() => {switchPage("history");setSoundType("sfx");fetchHistory()}}>
                 History
                 <img className="menu-background" src="https://cdn-icons-png.flaticon.com/512/1016/1016421.png" alt="" />
               </button>
-              <button className="menu-button"  onClick={() => switchPage("favorites")}>
+              {/* <button className="menu-button"  onClick={() => {switchPage("favorites");setSoundType("sfx")}}>
                 Favorites
                 <img className="menu-background" style={{filter:"grayscale(100%)"}} src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSOBqyAFFvvjOM7mJZllXvBkUY8k2DQE5RAIw&s" alt="" />
-              </button>
-              <button className="menu-button back-button" onClick={() => switchPage("landing")}>
+              </button> */}
+              <button className="menu-button back-button" onClick={() => {switchPage("landing");setSoundType("sfx")}}>
                 Back
               </button>
             </div>
@@ -955,7 +1086,7 @@ function App() {
           <div className="pokedex-cont">
             <img className="poked" src={pokedex} alt="" />
             <div className="poke-nav">
-              <button onClick={() => switchPage("menu")}>Back</button>
+              <button onClick={() => {switchPage("menu");setSoundType("sfx")}}>Back</button>
               <div className="search-box">
                 <input
                   type="text"
@@ -964,7 +1095,7 @@ function App() {
                 />
                 <img src={poke} alt="Search" />
               </div>
-                <button onClick={toggleFilter}>Filter</button>
+                <button onClick={() => {toggleFilter();setSoundType("sfx")}}>Filter</button>
                 {showFilter && (
                 <div className="filter-box">
                   {[
@@ -975,7 +1106,7 @@ function App() {
                       <div
                         key={type}
                         className={`filter-type ${type}`}
-                        onClick={() => handleTypeFilterClick(type)}
+                        onClick={() => {handleTypeFilterClick(type);setSoundType("sfx")}}
                       >
                       {type}
                     </div>
@@ -997,9 +1128,9 @@ function App() {
                         <div className="card-header">
                           <div className="pokename">
                             <div className="card-icons">
-                              <button className={`card-btn ${pokemon.types[0].type.name}`} onClick={() => handleViewClick(pokemon.id)}><FaEye /></button>
-                              <button className={`card-btn ${pokemon.types[0].type.name}`} onClick={() => addToFavorites(pokemon.id)}><FaBookmark /></button>
-                              <button className={`card-btn ${pokemon.types[0].type.name}`} onClick={() => addToTeam(pokemon.id)}><FaPlus /></button>
+                              <button className={`card-btn ${pokemon.types[0].type.name}`} onClick={() => {handleViewClick(pokemon.id);setSoundType("sfx")}}><FaEye /></button>
+                              <button className={`card-btn ${pokemon.types[0].type.name}`} onClick={() => {addToFavorites(pokemon.id);setSoundType("sfx")}}><FaBookmark /></button>
+                              <button className={`card-btn ${pokemon.types[0].type.name}`} onClick={() => {addToTeam(pokemon.id);setSoundType("sfx")}}><FaPlus /></button>
                             </div>
                             <span className="pokeid">#{pokemon.id}</span>
                             <h1>{pokemon.name}</h1>
@@ -1037,9 +1168,9 @@ function App() {
               </div>
               <div className="navigations">
                 <div className="paginations">
-                  <button onClick={() => currentPage > 1 && fetchPokemon(currentPage - 1, selectedType)}>Prev</button>
+                  <button onClick={() => {currentPage > 1 && fetchPokemon(currentPage - 1, selectedType);setSoundType("sfx")}}>Prev</button>
                   <span>Page {currentPage}</span>
-                  <button onClick={() => fetchPokemon(currentPage + 1, selectedType)}>Next</button>
+                  <button onClick={() => {fetchPokemon(currentPage + 1, selectedType);setSoundType("sfx")}}>Next</button>
                 </div>
               </div>
             </div>
@@ -1053,30 +1184,33 @@ function App() {
             <div className={`battle-cont ${activeBattlePage === "choices" ? "active" : ""}`}>
               <img className="poked" src={pokearena} alt="" />
               <div className="battle-choices">
-                <button onClick={() => fetchSelected()}>
+                <button  onClick={() => {fetchSelected();setSoundType("sfx")}}>
                   Vs. AI
                   <img className="menu-background" src="https://static.thenounproject.com/png/886706-200.png" alt="" />
                 </button>
-                <button onClick={() => setActiveBattlePage("computer2")}>
-                  Vs. AI (Group Battle)
+                <button disabled={true} onClick={() => {setActiveBattlePage("computer2");setSoundType("sfx")}}>
+                  Vs. AI (Group Battle) 
+                  <span>(COMING SOON)</span>
                   <img className="menu-background" src="https://static.thenounproject.com/png/886706-200.png" alt="" />
                 </button>
-                <button onClick={() => setActiveBattlePage("pvp1")}>
+                <button disabled={true} onClick={() => {setActiveBattlePage("pvp1");setSoundType("sfx")}}>
                   PvP
+                  <span>(COMING SOON)</span>
                   <img className="menu-background" src="https://static.thenounproject.com/png/886706-200.png" alt="" />
                 </button>
-                <button onClick={() => setActiveBattlePage("pvp2")}>
+                <button disabled={true} onClick={() => {setActiveBattlePage("pvp2");setSoundType("sfx")}}>
                   PvP (Group Battle)
+                  <span>(COMING SOON)</span>
                   <img className="menu-background" src="https://static.thenounproject.com/png/886706-200.png" alt="" />
                 </button>
               </div>
-              <button className="back-btn" onClick={() => switchPage("menu")}>Back to Menu</button>
+              <button className="back-btn" onClick={() => {switchPage("menu");setSoundType("sfx")}}>Back to Menu</button>
             </div>
 
             <div className={`battle-cont ${activeBattlePage === "computer1" ? "active" : ""}`}>
               <div className="title-cont">
                 <h1>Choose Pokemon</h1>
-                <button className="back-btn" onClick={() => setActiveBattlePage("choices")}>Back</button>
+                <button className="back-btn" onClick={() => {setActiveBattlePage("choices");setSoundType("sfx")}}>Back</button>
               </div>
               <div className="choosing">
                 <div className="carousel">
@@ -1094,13 +1228,13 @@ function App() {
                     </div>
                   )}
                 <div className="arrows-cont">
-                  <button onClick={handlePrev}><FaArrowLeft /></button>
-                  <button onClick={handleNext}><FaArrowRight /></button>
+                  <button onClick={() =>{handlePrev();setSoundType("sfx")}}><FaArrowLeft /></button>
+                  <button onClick={() => {handleNext();setSoundType("sfx")}}><FaArrowRight /></button>
                 </div>
               </div>
 
               </div>
-              <button className="fight" onClick={() => fight(activeBattlePage)}>Fight</button>
+              <button className="fight" onClick={() => {fight(activeBattlePage);setSoundType("sfx")}}>Fight</button>
             </div>
 
             <div className={`battle-cont ${activeBattlePage === "arena1" ? "active" : ""}`}>
@@ -1122,19 +1256,22 @@ function App() {
                   </div>
 
                   <div className="results">
-                    {!finalBattleResult && <p>{roundResult}</p>}
+                    {!finalBattleResult && roundResult && <p>{roundResult}</p>}
                     {finalBattleResult && (
-                      <h2 className="final-result">{finalBattleResult}</h2> 
+                      <h2 className="final-result">{finalBattleResult}</h2>
                     )}
                   </div>
                 </div>
                 <div className="fighting-pokemon">
                   <div className="the-pokemon">
                     <img 
-                      style={{height:"60%"}}
-                      src={randomPokemon?.image?.front || "https://img.pokemondb.net/sprites/brilliant-diamond-shining-pearl/normal/dialga.png"} 
-                      alt={randomPokemon?.name || "Dialga"} 
+                      style={{height:"60%",paddingBottom:"1.5em"}}
+                      src={randomPokemon?.front || "https://pokestreak.com/question.png"} 
+                      alt={randomPokemon?.name || "random"} 
                     />
+                    <div className="grassland">
+                      <img src={grass} alt="" />
+                    </div>
                   </div>
                   <div className="hud">
                     <strong className="strong">{randomPokemon?.name || "Unkown"}</strong>
@@ -1147,28 +1284,34 @@ function App() {
                       src={chosenPokemon[currentIndex]?.back || chosenPokemon[currentIndex]?.image || "https://img.pokemondb.net/sprites/brilliant-diamond-shining-pearl/normal/dialga.png"} 
                       alt={chosenPokemon[currentIndex]?.name || "Dialga"} 
                     />
+                    <div className="grassland you">
+                      <img src={grass} alt="" />
+                    </div>
                   </div>
                   <div className="hud you">
                     <strong className="strong you">{chosenPokemon[currentIndex]?.name || "Dialga"}</strong>
                     <HealthBar health={yourHealth} />
                   </div>
                 </div>
+                {finalBattleResult && (
+                <button className="back-btn" onClick={() => {setActiveBattlePage("choices"); clearing();setSoundType("sfx")}}>Back</button>
+                )}
               </div>
             </div>
 
             <div className={`battle-cont ${activeBattlePage === "computer2" ? "active" : ""}`}>
               <h1>computer2</h1>
-              <button className="back-btn" onClick={() => setActiveBattlePage("choices")}>Back</button>
+              <button className="back-btn" onClick={() => {setActiveBattlePage("choices");setSoundType("sfx")}}>Back</button>
             </div>
 
             <div className={`battle-cont ${activeBattlePage === "pvp1" ? "active" : ""}`}>
               <h1>pvp1</h1>
-              <button className="back-btn" onClick={() => setActiveBattlePage("choices")}>Back</button>
+              <button className="back-btn" onClick={() => {setActiveBattlePage("choices");setSoundType("sfx")}}>Back</button>
             </div>
 
             <div className={`battle-cont ${activeBattlePage === "pvp2" ? "active" : ""}`}>
               <h1>pvp2</h1>
-              <button className="back-btn" onClick={() => setActiveBattlePage("choices")}>Back</button>
+              <button className="back-btn" onClick={() => {setActiveBattlePage("choices");setSoundType("sfx")}}>Back</button>
             </div>
           </div>
         </div>
@@ -1179,16 +1322,16 @@ function App() {
             <div className={`team-page ${activeTeam === "teams" ? "active" : ""}`}>
               <h1>My Teams Page</h1>
               <div className="poke-nav">
-                <button onClick={() => switchPage("menu")}>Back</button>
+                <button onClick={() => {switchPage("menu");setSoundType("sfx")}}>Back</button>
                 <div className="search-box">
                   <input
                     type="text"
                     placeholder="Search Team..."
-                    onInput={(e) => handleInputChange(e.target.value)}
+                    onInput={(e) => handleSearch(e.target.value)}
                   />
                   <img src={poke} alt="Search" />
                 </div>
-                <button onClick={() => setShowOverlay(true)}>Create</button>
+                <button onClick={() => {setShowOverlay(true);setSoundType("sfx")}}>Create</button>
               </div>
               <div className="poke-cont">
                 <div className="pokelist">
@@ -1204,9 +1347,9 @@ function App() {
                         }}
                       >
                         <div className="pokecard-overlay">
-                          <button onClick={() => selectTeam(team.id)}>Select Team</button>
-                          <button onClick={() => viewTeam(team.id)}>View Team</button>
-                          <button onClick={() => deleteTeam(team.id)}>Delete Team</button>
+                          <button onClick={() => {selectTeam(team.id);setSoundType("sfx")}}>Select Team</button>
+                          <button onClick={() => {viewTeam(team.id);setSoundType("sfx")}}>View Team</button>
+                          <button onClick={() => {deleteTeam(team.id);setSoundType("sfx")}}>Delete Team</button>
                         </div>
                         <h1 className="teamName">{team.name}</h1>
                         <div className="teamcard">
@@ -1229,13 +1372,13 @@ function App() {
                       </div>
                     ))}
                 </div>
-                <div className="navigations">
+                {/* <div className="navigations">
                   <div className="paginations">
-                    <button onClick={() => currentPage > 1 && fetchPokemon(currentPage - 1, selectedType)}>Prev</button>
+                    <button onClick={() => {currentPage > 1 && fetchPokemon(currentPage - 1, selectedType);setSoundType("sfx")}}>Prev</button>
                     <span>Page {currentPage}</span>
-                    <button onClick={() => fetchPokemon(currentPage + 1, selectedType)}>Next</button>
+                    <button onClick={() => {fetchPokemon(currentPage + 1, selectedType);setSoundType("sfx")}}>Next</button>
                   </div>
-                </div>
+                </div> */}
               </div>
             </div>
 
@@ -1250,7 +1393,7 @@ function App() {
                       {member ? (
                         <>
                           <div className="overlay-remove">
-                            <button onClick={() => removeFromTeam(team.id, member.id)}>
+                            <button onClick={() => {removeFromTeam(team.id, member.id);setSoundType("sfx")}}>
                               <FaTrash />
                             </button>
                           </div>
@@ -1284,18 +1427,22 @@ function App() {
                             <div className="backpoke">
                               <img className="backpokepic" src={pokeball} alt="" />
                             </div>
-                            <img className="teampic" src={member.front} alt={member.name} title={member.name} />
-                            <span className="poke-name">{member.name}</span>
-                            <div className="subtitles">
-                              {member.type && member.type.map((type, index) => (
-                                <span
-                                  className={`subtitle ${type}`}
-                                  key={index}
-                                  style={{ padding: "2px", borderRadius: "10px" }}
-                                >
-                                  {type.toUpperCase()}
-                                </span>
-                              ))}
+                            <div className="single-pic">
+                              <img className="teampics" src={member.front} alt={member.name} title={member.name} />
+                            </div>
+                            <div className="team-titles">
+                              <span className="poke-name">{member.name}</span>
+                              <div className="subtitles">
+                                {member.type && member.type.map((type, index) => (
+                                  <span
+                                    className={`subtitle ${type}`}
+                                    key={index}
+                                    style={{ padding: "2px", borderRadius: "10px" }}
+                                  >
+                                    {type.toUpperCase()}
+                                  </span>
+                                ))}
+                              </div>
                             </div>
                           </div>
                         </>
@@ -1314,22 +1461,133 @@ function App() {
               <button className="back-btn" onClick={() => {
                 setActiveTeam("teams");
                 fetchTeams();
+                setSoundType("sfx")
               }}>Back to Teams</button>
             </div>
           </div>
         </div>
         <div className={`page ${activePage === "history" ? "active" : ""}`}>
           <div className="pokedex-cont">
-          <button className="back-btn" onClick={() => {
-                setActiveTeam("teams");
-                fetchTeams();
-              }}>Back to Teams</button>
+            <div className={`history-cont ${activeHistory === "history" ? "active" : ""}`}>
+                <h1>HISTORY PAGE</h1>
+
+              <div className="pokelist" style={{ width: "100%", margin: "1em" }}>
+                {battles.length === 0 ? (
+                  <p>Loading battle history...</p>
+                ) : (
+                  battles.map((battle) => {
+                    const { userPokemon, computerPokemon, result, id } = battle;
+                    const userIsLoser = userPokemon.id !== result;
+                    const computerIsLoser = computerPokemon.id !== result;
+
+                    return (
+                      <div key={id} className="pokecard">
+                        <div className="overlay-remove">
+                          <button onClick={() => { viewBattleLog(battle.id); setSoundType("sfx"); }}>
+                            <FaEye />
+                          </button>
+                        </div>
+                        <div className="user">
+                          <div className="backpoke">
+                            <img className="backpokepic" src={pokeball} alt="" />
+                          </div>
+                          <img
+                            className="teampic"
+                            src={userPokemon.front}
+                            alt={userPokemon.name}
+                            style={{ filter: userIsLoser ? "grayscale(100%)" : "none" }}
+                          />
+                          <span className="spans">{userPokemon.name}</span>
+                        </div>
+                        <div className="user">
+                          <span  className="spans">{computerPokemon.name}<span>(ENEMY)</span></span>
+                          <div className="backpoke">
+                            <img className="backpokepic" src={pokeball} alt="" />
+                          </div>
+                          <img
+                            className="teampic"
+                            src={computerPokemon.front}
+                            alt={computerPokemon.name}
+                            style={{ filter: computerIsLoser ? "grayscale(100%)" : "none" }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+              <button className="back-btn" onClick={() => { switchPage("menu"); setSoundType("sfx"); }}>
+                Back to Menu
+              </button>
+            </div>
+            <div className={`history-cont ${activeHistory === "details" ? "active" : ""}`}>
+              <div className="title-page">
+                <h1>Battle Log</h1>
+              </div>
+              <div className="log">
+                {/* User Pokemon Stats */}
+                <div className="faught">
+                  <div className="faught-img">
+                    <h1 className="user-pokemon">{battleLog.userPokemon?.name}</h1>
+                    <img src={battleLog.userPokemon?.image || "default_image_url"} alt={battleLog.userPokemon?.name || "Unknown Pokémon"} />
+                    {battleLog.result === battleLog.userPokemon?.id && (
+                      <strong className="winner">WINNER</strong>
+                    )}
+                  </div>
+                  <div className="faught-stats">
+                  {battleLog.userPokemon?.stats?.map((stat, idx) => (
+                    <div key={idx} className="log-stats">
+                      <p>{statAbbreviations[stat?.name?.toLowerCase()] || "N/A"}</p>
+                      <p>{stat?.base || "N/A"}</p>
+                    </div>
+                  ))}
+                  </div>
+                </div>
+
+                {/* Random Stats */}
+                <div className="random-stats">
+                  <div className="the-randoms">
+                    <strong>RANDOM STATS</strong>
+                    <div className="rndms">
+                      {battleLog.selectedStats?.map((stat, idx) => (
+                        <span key={idx}>{stat || "N/A"}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Computer Pokemon Stats */}
+                <div className="faught">
+                  <div className="faught-img">
+                    <h1 className="com-pokemon">{battleLog.computerPokemon?.name}</h1>
+                    <img src={battleLog.computerPokemon?.image|| "default_image_url"} alt={battleLog.computerPokemon?.name || "Unknown Pokémon"} />
+                    {battleLog.result === battleLog.computerPokemon?.id && (
+                      <strong className="winner">WINNER</strong>
+                    )}
+                  </div>
+                  <div className="faught-stats">
+                  {battleLog.computerPokemon?.stats?.map((stat, idx) => (
+                    <div key={idx} className="log-stats">
+                      <p>{statAbbreviations[stat?.name?.toLowerCase()] || "N/A"}</p>
+                      <p>{stat?.base || "N/A"}</p>
+                    </div>
+                  ))}
+                  </div>
+                </div>
+
+              </div>
+
+              <button className="back-btn" onClick={() => { setActiveHistory("history"); setSoundType("sfx"); setBattleLog("null") }}>
+                Back
+              </button>
+            </div>
           </div>
+
         </div>
-        <div className={`page ${activePage === "favorites" ? "active" : ""}`}>
+        {/* <div className={`page ${activePage === "favorites" ? "active" : ""}`}>
           <h1>favorites Page</h1>
-          <button onClick={() => switchPage("menu")}>Back to Menu</button>
-        </div>
+          <button onClick={() => {switchPage("menu");setSoundType("sfx")}}>Back to Menu</button>
+        </div> */}
       </div>
     </>
   )
