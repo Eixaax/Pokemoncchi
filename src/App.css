@@ -588,14 +588,44 @@
   font-family: var(--text-font);
   position: relative;
   z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
+.battle-choices span{
+  color: red;
+}
+
+
+
 .battle-choices button:hover {
-  background-color: #7a29cc;
+  background: #4b0082;
+  transform: scale(1.05);
+
 }
 
 .back-btn{
   background-color: var(--color-light);
+}
+
+.alert-overlay{
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.alert-overlay.active{
+  display: flex;
+
 }
 
 .battle-cont {
@@ -617,7 +647,7 @@
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
-  z-index: 1; /* bring active one on top */
+  z-index: 1; 
 }
 
 .battle-cont h1{
@@ -648,7 +678,7 @@
   justify-content: center;
   align-items: center;
   flex-direction: column;
-  border: 5px dashed var(--background);
+  border: 5px dashed var(--color-light);
   border-radius: 20px;
   background-color: rgba(88, 28, 135, 0.3);
 }
@@ -724,8 +754,6 @@
   align-items: center;
 }
 
-
-/* Type-specific type container backgrounds */
 .pokecard.electric .poke-types { background-color: var(--color-electric); }
 .pokecard.fire .poke-types { background-color: var(--color-fire); }
 .pokecard.water .poke-types { background-color: var(--color-water); }
@@ -785,7 +813,7 @@
   margin: 0;
 
   font-family: var(--pokemon-font);
-  -webkit-text-stroke: 2.5px #2a75bb; /* Crisp blue border */
+  -webkit-text-stroke: 2.5px #2a75bb; 
 
 }
 
@@ -796,7 +824,7 @@
   text-shadow: 2px 5px 1px #ffffffeb;
   margin: 0;
   font-family: var(--pokemon-font);
-  -webkit-text-stroke: 2.5px #2a75bb; /* Crisp blue border */
+  -webkit-text-stroke: 2.5px #2a75bb; 
 
 }
 
@@ -831,11 +859,10 @@
 }
 
 .start-button:hover {
-  background: linear-gradient(to bottom right, #9933ff, #5c0099); /* Slightly brighter on hover */
+  background: linear-gradient(to bottom right, #9933ff, #5c0099);
   transform: scale(1.05);
 }
 
-/* Menu page styles */
 .menu-container {
   position: relative;
   width: 100%;
@@ -975,9 +1002,7 @@
 }
 
 .poke-modal-overlay.active {
-  
   display: flex;
-  
 }
 
 .poke-modal {
@@ -1546,12 +1571,52 @@
   z-index: 1;
 }
 
+
+.team-titles{
+  height: 100%;
+  width: 100%;
+  align-items: center;
+  display: flex;
+  justify-content: end;
+  flex-direction: column;
+  padding-bottom: 0.5em;
+}
+
+.single-pic{
+  position: absolute;
+}
+
+.single-pic .teampics{
+  height: auto;
+  width: auto;
+}
+
+.grassland{
+  height: 100%;
+  position: absolute;
+  z-index: -1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  flex-direction: column;
+  
+}
+
+.grassland.you{
+  height: 200%;
+}
+
 .arena{
   height: 70%;
   width: 60%;
   display: flex;
   flex-direction: column;
+  align-items: center;
+}
 
+.arena .back-btn{
+  width: 150px;
 }
 
 .fighting-pokemon{
@@ -1568,11 +1633,15 @@
 }
 
 .the-pokemon{
-  height: 70%;
+  height: 100%;
   position: absolute;
-  z-index: 2;
+  z-index: 3;
   display: flex;
   align-items: center;
+}
+
+.arena button{
+  z-index: 4;
 }
 
 .hud{
@@ -1588,11 +1657,20 @@
   justify-content: space-evenly;
   flex-direction: column;
   color: black;
+  z-index: 2;
+}
+
+button:disabled{
+  background-color: gray !important;
+  background: none;
+  cursor: not-allowed;
 }
 
 .hud.you{
   right: 1em;
   left: inherit;
+  top: 1.5em;
+  bottom: 1em;
   
 }
 
@@ -1641,7 +1719,7 @@
 
 .vs-stats{
   height: 100%;
-  width: 40%;
+  width: 70%;
   display: flex;
   flex-direction: column-reverse;
   justify-content: space-between;
@@ -1658,6 +1736,8 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%,-50%);
+  padding-bottom: 2em;
+  text-transform: capitalize;
 }
 
 .results p {
@@ -1667,10 +1747,11 @@
 
 .final-result {
   margin-top: 20px;
-  font-size: 24px;
+  font-size: clamp(1rem, 2.5vw, 2rem);
   font-weight: bold;
   color: gold;
   animation: popIn 0.5s ease;
+  text-align: center;
 }
 
 @keyframes popIn {
@@ -1700,13 +1781,14 @@
 .the-stats{
   display: flex;
   flex-direction: row-reverse;
-  justify-content: end;
   align-items: center;
   height: 50%;
   padding-right: 1em;
   gap: 1em;
   width: auto;
   animation: popIn 0.5s ease;
+  -webkit-text-stroke: 0.5px var(--color-light); 
+  color: white;
 }
 
 
@@ -1717,6 +1799,10 @@
   padding-right: 0;
 }
 
+
+.the-stats strong{
+  font-size: clamp(0.9rem, 2.5vw, 1.2rem);
+}
 
 .health-bar p, .health-bar.you p, .the-stats p{
   margin: 0;
@@ -1735,14 +1821,16 @@
   background-color: var(--color-light);
   height: 10px;
   border-radius: 5px;
+  transition: width 0.3s ease;
 }
+
 
 .bar.you{
   width: 100%;
 }
 
 .the-pokemon img{
-  height: 100%;
+  height: 80%;
   object-fit: contain;
 }
 
@@ -1912,9 +2000,188 @@
   transform: scale(1.1);
 }
 
+.history-cont h1{
+  margin: 0.2em;
+}
+
+.history-cont{
+  height: 100%;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  position: absolute;
+  opacity: 0;
+  visibility: none;
+  transition: all 0.3s ease;
+  z-index: 1;
+  flex-direction: column;
+}
+
+
+.history-cont.active{
+  opacity: 1;
+  visibility: visible;
+  z-index: 2;
+  
+}
+
+.user{
+  height: 50%;
+  width: 100%;
+  display: flex;
+  position: relative;
+  align-items: center;
+  justify-content: center;
+}
+
+.user .teampic{
+  height: auto;
+  width: auto;
+  object-fit: contain;
+  z-index: 3;
+}
+
+.history-cont .pokecard{
+  background-color: rgba(88, 28, 135, 0.3);
+  border: dashed 5px var(--color-light);
+}
+
+
+.history-cont .pokecard .overlay-remove{
+  height: 100%;
+  width: 100%;
+  position: absolute;
+  z-index: 12;
+  overflow: hidden;
+  border-radius: 20px;
+  display: flex;
+  opacity: 0;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  
+}
+
+.history-cont .pokecard .spans{
+  position: absolute;
+  top:0.5em;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+}
+
+.history-cont .pokecard .spans span{
+  color: red;
+}
+
+.history-cont .pokecard .overlay-remove button{
+  color: white;
+}
+
+.history-cont .pokecard .overlay-remove button:hover{
+  color: wheat;
+}
+
+.history-cont .pokecard:hover  .overlay-remove{
+  opacity: 1;
+}
+
+.log{
+  height: 60%;
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-evenly;
+}
+
+.faught{
+  height: 100%;
+  width: 40%;
+  background-color: rgba(88, 28, 135, 0.3);
+  border-radius: 20px;
+  border: 5px dashed var(--color-light);
+}
+
+.faught-img{
+  height: 60%;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.faught-img img{
+  height: 80%;
+  object-fit: contain;
+  width: 100%;
+}
+
+.faught-stats {
+  height: 40%;  
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);  
+  grid-template-rows: repeat(3, 1fr);     
+  gap: 1em;  
+  padding: 0.5em;
+  box-sizing: border-box; 
+}
+
+.log-stats {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;  
+}
+
+.log-stats p{
+  margin: 0;
+}
+
+.winner{
+  position: absolute;
+  bottom: 0;
+  color: gold;
+  text-transform: capitalize;
+}
+
+.user-pokemon, .com-pokemon{
+  position: absolute;
+  top: 0;
+  text-transform: capitalize;
+  font-size: clamp(1.5rem, 2.5vw, 2.5rem);
+}
+
+.random-stats{
+  height: 100%;
+  width: 20%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(0.7rem, 2.5vw, 1.2rem);
+}
+
+.the-randoms{
+  display: flex;
+  padding: 1EM;
+  flex-direction: column;
+  text-align: center;
+  gap: 0.5em;
+}
+
+.rndms{
+  flex-direction: column;
+  display: flex;
+  align-items: center;
+}
+
 @media (max-width: 768px) {
   .team-grid {
-    grid-template-columns: repeat(2, 1fr); /* 2 columns for smaller screens */
+    grid-template-columns: repeat(2, 1fr); 
   }
 
   .main-pokemon {
@@ -1937,11 +2204,11 @@
   }
 
   .hud{
-    width: 200px;
+    width: 150px;
   }
 
   .arena{
-    width: 100%;
+    width: 90%;
   }
 
   .battle-cont h1{
@@ -1950,13 +2217,28 @@
 
   .battle-cont .item{
     height: 400px;
+    min-width: 300px;
   }
 
   .vs-stats{
     flex-direction: row;
-    width: 60%;
+    width: 80%;
     align-items: center;
 
+  }
+
+  .battle-stats{
+    height: 300px;
+  }
+
+  .the-stats{
+    flex-direction: column;
+    gap: 0.2em;
+  }
+
+  .the-stats.you{
+    flex-direction: column;
+    justify-content: end;
   }
 }
 
